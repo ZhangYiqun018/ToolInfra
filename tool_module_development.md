@@ -77,6 +77,7 @@ Build a lightweight yet extensible tool layer for LLM agents, covering registrat
 - Unit tests: registry operations, schema validation, cache behavior, port forwarding setup (mock), MCP endpoints.
 - Integration tests: exercise a realistic tool suite via both direct `invoke` and MCP calls.
 - Ensure adapters are optional: default configuration disables cache and port forwarding to avoid surprising tool authors.
+- Testing policy: avoid using mocks when validating tool behaviours; prefer running against real clients or controlled fixtures so results reflect actual execution paths.
 
 ## Future Extensions (Deferred)
 - Multi-tier caching, eviction metrics, adaptive strategies.
