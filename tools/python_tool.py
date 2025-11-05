@@ -10,12 +10,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
-try:
-    from sandbox_fusion import RunCodeRequest, RunStatus, run_code  # type: ignore
-except Exception:  # pragma: no cover - optional dependency
-    RunCodeRequest = None  # type: ignore
-    RunStatus = None  # type: ignore
-    run_code = None  # type: ignore
+from sandbox_fusion import RunCodeRequest, RunStatus, run_code
 
 from tool_core import ToolDefinition
 from tools.utils import extract_code
