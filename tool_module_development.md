@@ -22,6 +22,7 @@ Build a lightweight yet extensible tool layer for LLM agents, covering registrat
 - **Tool Registry (`tool_core.registry`)**: in-memory registry, JSON Schema validation (with fallback), error taxonomy, and singleton-aware callable lifecycle management.
 - **Python Execution Tool (`tools.python_tool`)**: sandbox-first code runner with safety checks, local fallback, and schema-driven contracts.
 - **Web Search Tool (`tools.search_tool`)**: Serper-backed organic search integration with configurable locale parameters, retries, and registry-friendly factory helpers.
+- **Cache Utilities (`tool_core.cache`)**: adapter interface, in-memory stub, SQLite file-backed storage, PyMySQL backend, and registry-level cache orchestration.
 
 ## Core Components
 
@@ -44,10 +45,11 @@ Build a lightweight yet extensible tool layer for LLM agents, covering registrat
 
 ### Cache Adapter
 - Interface: `get(cache_key)`, `set(cache_key, value, ttl=None)`, `invalidate(cache_key=None)`.
-- Default implementation: in-process dictionary with TTL support; backends like Redis remain optional plug-ins.
+- Default implementation: in-process dictionary with TTL support; SQLite and MySQL adapters provide persistent storage; backends like Redis remain optional plug-ins.
 - Tool definition flags: `cacheable: bool`, `cache_key_fn(payload)`, `default_ttl`.
 - `invoke` checks `cacheable` before execution: read cache → fall back to execution → write cache if enabled.
 - Hooks for future expansion (metrics, distributed locks) remain placeholders only.
+- Deployment knobs: `.env` toggles caching (`CACHE_ENABLED`), points to the JSON config (`CACHE_CONFIG_PATH`), and can override the backend (`CACHE_BACKEND`).
 
 ### Port Forwarding Adapter
 - Interface: `ensure_tunnel(target_host, target_port, context=None)` returning a local endpoint.

@@ -331,4 +331,6 @@ def create_python_tool_definition(
         output_schema=PYTHON_OUTPUT_SCHEMA,
         factory=factory,
         tags=("builtin", "execution"),
+        cacheable=True,
+        cache_ttl=None,
     )

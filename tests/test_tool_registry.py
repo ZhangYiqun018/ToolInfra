@@ -1,10 +1,14 @@
+import sqlite3
+import tempfile
 import unittest
+from pathlib import Path
 
 from tool_core import ToolDefinition
 from tool_core import ToolNotFoundError
 from tool_core import ToolRegistrationError
 from tool_core import ToolRegistry
 from tool_core import ToolValidationError
+from tool_core.cache import InMemoryCacheAdapter, SQLiteCacheAdapter
 
 
 class _EchoTool:
@@ -98,6 +102,90 @@ class ToolRegistryTests(unittest.TestCase):
     def test_missing_tool(self):
         with self.assertRaisesRegex(ToolNotFoundError, "Tool 'missing'"):
             self.registry.invoke("missing", {})
+
+
+class ToolRegistryCacheTests(unittest.TestCase):
+    def setUp(self):
+        adapter = InMemoryCacheAdapter()
+        self.calls = 0
+
+        def factory():
+            def handler(payload, context=None):
+                self.calls += 1
+                return {"message": payload["text"]}
+
+            return handler
+
+        self.registry = ToolRegistry(cache_adapter=adapter)
+        self.registry.register(
+            ToolDefinition(
+                name="echo_cached",
+                description="Cached echo",
+                input_schema=ECHO_INPUT_SCHEMA,
+                output_schema=ECHO_OUTPUT_SCHEMA,
+                factory=factory,
+                cacheable=True,
+                cache_ttl=30,
+            )
+        )
+
+    def test_cache_hit_skips_execution(self):
+        payload = {"text": "hello"}
+        first = self.registry.invoke("echo_cached", payload)
+        second = self.registry.invoke("echo_cached", payload)
+        self.assertEqual(first, second)
+        self.assertEqual(self.calls, 1, "Tool should only execute once due to caching")
+
+    def test_context_changes_key(self):
+        payload = {"text": "hello"}
+        self.registry.invoke("echo_cached", payload, context={"voice": "formal"})
+        self.registry.invoke("echo_cached", payload, context={"voice": "casual"})
+        self.assertEqual(self.calls, 2)
+
+
+class ToolRegistrySQLiteCacheTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        db_path = Path(self.temp_dir.name) / "registry_cache.db"
+        self.adapter = SQLiteCacheAdapter(db_path)
+        self.calls = 0
+
+        def factory():
+            def handler(payload, context=None):
+                self.calls += 1
+                return {"message": payload["text"]}
+
+            return handler
+
+        self.registry = ToolRegistry(cache_adapter=self.adapter)
+        self.registry.register(
+            ToolDefinition(
+                name="echo_sqlite",
+                description="Cached echo (sqlite)",
+                input_schema=ECHO_INPUT_SCHEMA,
+                output_schema=ECHO_OUTPUT_SCHEMA,
+                factory=factory,
+                cacheable=True,
+                cache_ttl=None,
+            )
+        )
+
+    def tearDown(self):
+        self.adapter.close()
+        self.temp_dir.cleanup()
+
+    def test_cache_hits_sqlite(self):
+        payload = {"text": "hello"}
+        first = self.registry.invoke("echo_sqlite", payload)
+        second = self.registry.invoke("echo_sqlite", payload)
+        self.assertEqual(first, second)
+        self.assertEqual(self.calls, 1)
+
+        conn = sqlite3.connect(self.adapter.path)
+        rows = conn.execute("SELECT cache_key, value_json, expires_at FROM cache_entries").fetchall()
+        conn.close()
+        self.assertEqual(len(rows), 1)
+        self.assertIsNone(rows[0][2])
 
 
 if __name__ == "__main__":

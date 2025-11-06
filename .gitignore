@@ -2,3 +2,5 @@ __pycache__/
 *.pyc
 .env
 examples/outputs/
+\.cache/
+config/cache.json

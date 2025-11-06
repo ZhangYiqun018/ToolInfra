@@ -11,6 +11,8 @@ try:
 except Exception:  # pragma: no cover - optional dependency
     jsonschema = None  # type: ignore
 
+from .cache import CacheAdapter, CacheKeyGenerator, NoOpCacheAdapter
+
 
 class ToolRegistryError(Exception):
     """Base error for registry operations."""
@@ -99,15 +101,25 @@ class ToolDefinition:
     tags: Tuple[str, ...] = ()
     metadata: Dict[str, Any] = field(default_factory=dict)
     singleton: bool = True
+    cacheable: bool = False
+    cache_ttl: Optional[int] = None
+    cache_key_fn: Optional[Callable[[Any, Optional[dict]], str]] = None
 
 
 class ToolRegistry:
     """In-memory registry that wires metadata and execution together."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        cache_adapter: Optional[CacheAdapter] = None,
+        cache_key_generator: Optional[CacheKeyGenerator] = None,
+    ) -> None:
         self._tools: Dict[str, ToolDefinition] = {}
         self._instances: Dict[str, ToolCallable] = {}
         self._lock = threading.RLock()
+        self._cache_adapter = cache_adapter or NoOpCacheAdapter()
+        self._cache_key_generator = cache_key_generator or CacheKeyGenerator()
 
     def register(self, tool_def: ToolDefinition, *, overwrite: bool = False) -> None:
         """Register a tool definition."""
@@ -134,6 +146,11 @@ class ToolRegistry:
         """Validate payload, execute the tool, and validate the response."""
         tool_def = self.get(name)
         _validate(tool_def.input_schema, payload, location=f"Input for tool '{name}'")
+
+        cached = self._maybe_read_cache(tool_def, payload, context)
+        if cached is not None:
+            return cached
+
         handler = self._get_callable(tool_def)
         try:
             result = handler(payload, context)
@@ -142,6 +159,7 @@ class ToolRegistry:
         except Exception as exc:  # pragma: no cover - defensive wrap
             raise ToolExecutionError(f"Tool '{name}' execution failed: {exc}") from exc
         _validate(tool_def.output_schema, result, location=f"Output for tool '{name}'")
+        self._maybe_store_cache(tool_def, payload, context, result)
         return result
 
     def _get_callable(self, tool_def: ToolDefinition) -> ToolCallable:
@@ -152,3 +170,68 @@ class ToolRegistry:
                     self._instances[tool_def.name] = tool_def.factory()
                 return self._instances[tool_def.name]
         return tool_def.factory()
+
+    # ------------------------------------------------------------------ #
+    # Cache helpers
+    # ------------------------------------------------------------------ #
+    def _cache_enabled_for(self, tool_def: ToolDefinition) -> bool:
+        return tool_def.cacheable and not isinstance(self._cache_adapter, NoOpCacheAdapter)
+
+    def _compute_cache_key(
+        self,
+        tool_def: ToolDefinition,
+        payload: Any,
+        context: Optional[dict],
+    ) -> Optional[str]:
+        try:
+            if tool_def.cache_key_fn:
+                key = tool_def.cache_key_fn(payload, context)
+            else:
+                key = self._cache_key_generator.make_key(tool_def.name, payload, context)
+            if not key:
+                return None
+            return key
+        except Exception:
+            return None
+
+    def _maybe_read_cache(
+        self,
+        tool_def: ToolDefinition,
+        payload: Any,
+        context: Optional[dict],
+    ) -> Optional[Any]:
+        if not self._cache_enabled_for(tool_def):
+            return None
+        key = self._compute_cache_key(tool_def, payload, context)
+        if not key:
+            return None
+        entry = self._cache_adapter.get(key)
+        if entry is None:
+            return None
+        try:
+            _validate(
+                tool_def.output_schema,
+                entry.value,
+                location=f"Cached output for tool '{tool_def.name}'",
+            )
+        except ToolValidationError:
+            self._cache_adapter.invalidate(key)
+            return None
+        return entry.value
+
+    def _maybe_store_cache(
+        self,
+        tool_def: ToolDefinition,
+        payload: Any,
+        context: Optional[dict],
+        result: Any,
+    ) -> None:
+        if not self._cache_enabled_for(tool_def):
+            return
+        key = self._compute_cache_key(tool_def, payload, context)
+        if not key:
+            return
+        try:
+            self._cache_adapter.set(key, result, tool_def.cache_ttl)
+        except Exception:
+            return

@@ -296,4 +296,6 @@ def create_search_tool_definition(
             max_results=max_results,
         ),
         metadata={"provider": "serper"},
+        cacheable=True,
+        cache_ttl=None,
     )

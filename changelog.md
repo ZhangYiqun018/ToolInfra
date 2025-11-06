@@ -1,9 +1,13 @@
 # Changelog
 
-## 2025-11-06
-- ensured `examples/registry_openai_demo.py` always records assistant replies in the conversation history while retaining the additional tool result entries after sandbox calls
 
-## 2025-02-14
+## 2025-11-12
+- ensured `examples/registry_openai_demo.py` always records assistant replies in the conversation history while retaining the additional tool result entries after sandbox calls
+- added `tool_core.cache` package with in-memory, SQLite, and PyMySQL adapters, cache-aware registry integration, and config loaders
+- introduced cache configuration workflow (`.env.template`, `config/cache.example.json`), backend override environment hooks, CLI wiring, and README guidance
+- expanded tests with cache key/unit coverage, SQLite adapter exercises, and a MySQL integration suite driven by config files
+
+## 2025-11-05
 - scaffolded `tool_core` package with minimal `ToolRegistry`, schema validation, and error handling
 - added unit tests (`tests/test_tool_registry.py`) verifying registration, validation failures, and context usage
 - documented design direction in `tool_module_development.md` and noted reference project paths

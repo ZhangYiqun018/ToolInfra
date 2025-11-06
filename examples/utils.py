@@ -5,12 +5,26 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import os
 from pathlib import Path
-from typing import Any, Dict, Iterable, Mapping, Optional, Callable
+from typing import Any, Callable, Dict, Iterable, Mapping, NamedTuple, Optional
 
 from tool_core import ToolDefinition, ToolRegistry
+from tool_core.cache import (
+    CacheAdapter,
+    CacheConfig,
+    CacheKeyGenerator,
+    MySQLCacheAdapter,
+    SQLiteCacheAdapter,
+)
 
 DEFAULT_OUTPUT_DIR = Path("examples/outputs")
+DEFAULT_CACHE_CONFIG_PATH = Path("config/cache.json")
+
+
+class CacheSetup(NamedTuple):
+    adapter: CacheAdapter
+    key_generator: CacheKeyGenerator
 
 
 def current_timestamp() -> str:
@@ -21,17 +35,19 @@ def current_timestamp() -> str:
 def build_registry(
     available_tools: Mapping[str, Callable[[], ToolDefinition]],
     selected_tools: Optional[Iterable[str]],
+    *,
+    registry: Optional[ToolRegistry] = None,
 ) -> ToolRegistry:
     """Create a registry containing the requested tools."""
-    registry = ToolRegistry()
+    target = registry or ToolRegistry()
     selection = list(selected_tools) if selected_tools else list(available_tools.keys())
     unknown = sorted(set(selection) - set(available_tools))
     if unknown:
         raise ValueError(f"Unknown tool(s): {', '.join(unknown)}")
 
     for tool_name in selection:
-        registry.register(available_tools[tool_name]())
-    return registry
+        target.register(available_tools[tool_name]())
+    return target
 
 
 def parse_demo_args(
@@ -76,3 +92,42 @@ def export_history(
     with file_path.open("w", encoding="utf-8") as handle:
         json.dump(list(history), handle, ensure_ascii=False, indent=2)
     return file_path
+
+
+def load_cache_config(path: Path) -> CacheConfig:
+    """Load cache configuration from JSON file."""
+    with path.open("r", encoding="utf-8") as handle:
+        data = json.load(handle)
+    return CacheConfig.from_dict(data)
+
+
+def load_cache_from_env() -> Optional[CacheSetup]:
+    """Return cache adapter/key generator if enabled via environment variables."""
+    enabled = os.getenv("CACHE_ENABLED", "false").lower() in {"1", "true", "yes", "on"}
+    if not enabled:
+        return None
+
+    config_path = Path(os.getenv("CACHE_CONFIG_PATH", DEFAULT_CACHE_CONFIG_PATH))
+    if not config_path.exists():
+        raise FileNotFoundError(f"CACHE_CONFIG_PATH points to missing file: {config_path}")
+
+    cache_config = load_cache_config(config_path)
+    backend_override = os.getenv("CACHE_BACKEND")
+    if backend_override:
+        cache_config.backend = backend_override.strip().lower()
+    if not cache_config.enabled:
+        return None
+    key_generator = CacheKeyGenerator(prefix=cache_config.key_prefix)
+
+    backend = cache_config.backend.lower()
+    if backend == "mysql":
+        if cache_config.mysql is None:
+            raise ValueError("Cache configuration missing 'mysql' section.")
+        adapter = MySQLCacheAdapter(cache_config.mysql)
+    elif backend == "sqlite":
+        sqlite_config = cache_config.sqlite or SQLiteConfig()
+        adapter = SQLiteCacheAdapter(Path(sqlite_config.path))
+    else:
+        raise ValueError(f"Unsupported cache backend: {backend}")
+
+    return CacheSetup(adapter=adapter, key_generator=key_generator)

@@ -15,6 +15,7 @@ if __package__ in (None, ""):  # pragma: no cover - support direct execution
 
 from openai import OpenAI
 
+from tool_core import ToolRegistry
 from tools import create_python_tool_definition, create_search_tool_definition
 from tools.utils import extract_code
 
@@ -23,6 +24,7 @@ try:
         DEFAULT_OUTPUT_DIR,
         build_registry,
         export_history,
+        load_cache_from_env,
         parse_demo_args,
         current_timestamp,
     )
@@ -31,6 +33,7 @@ except ImportError:  # pragma: no cover - support running via `python examples/.
         DEFAULT_OUTPUT_DIR,
         build_registry,
         export_history,
+        load_cache_from_env,
         parse_demo_args,
         current_timestamp,
     )
@@ -102,7 +105,12 @@ def main() -> None:
     if not api_key:
         raise RuntimeError("OPENAI_API_KEY environment variable is required")
 
-    registry = build_registry(AVAILABLE_TOOLS, args.tools)
+    cache_setup = load_cache_from_env()
+    base_registry = ToolRegistry(
+        cache_adapter=cache_setup.adapter if cache_setup else None,
+        cache_key_generator=cache_setup.key_generator if cache_setup else None,
+    )
+    registry = build_registry(AVAILABLE_TOOLS, args.tools, registry=base_registry)
     tool_docs = "\n\n".join(format_tool_doc(tool) for tool in registry.list())
     system_prompt = SYSTEM_PROMPT_TEMPLATE.format(tool_docs=tool_docs)
     client = OpenAI(api_key=api_key, base_url=base_url) if base_url else OpenAI(api_key=api_key)
