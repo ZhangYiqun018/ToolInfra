@@ -1,2 +1,3 @@
 sandbox-fusion==0.3.7
 json5
+requests>=2.31.0

@@ -10,7 +10,7 @@ from typing import Any, Dict, List
 from openai import OpenAI
 
 from tool_core import ToolRegistry
-from tools import create_python_tool_definition
+from tools import create_python_tool_definition, create_search_tool_definition
 from tools.utils import extract_code
 
 SYSTEM_PROMPT_TEMPLATE = """You are a deep research assistant. Your core function is to conduct thorough, multi-source investigations and, when needed, call the available tools to reach a definitive answer.
@@ -39,6 +39,7 @@ TOOL_CALL_PATTERN = re.compile(r"<tool_call>\s*(\{.*?\})\s*</tool_call>", re.DOT
 def build_registry() -> ToolRegistry:
     registry = ToolRegistry()
     registry.register(create_python_tool_definition())
+    registry.register(create_search_tool_definition())
     return registry
 
 def format_tool_doc(tool_def) -> str:
@@ -64,17 +65,24 @@ def main() -> None:
     system_prompt = SYSTEM_PROMPT_TEMPLATE.format(tool_docs=tool_docs)
     client = OpenAI(api_key=api_key, base_url=base_url) if base_url else OpenAI(api_key=api_key)
 
+    messages: List[Dict[str, Any]] = [
+        {"role": "system", "content": system_prompt},
+    ]
+
     print(f"SYSTEM: {system_prompt}\n\n")
-    
+
     while True:
         user_input = input("Enter a task (or 'exit'): ").strip()
         if user_input.lower() in {"exit", "quit"}:
             break
+        if user_input.lower() == "reset":
+            messages = [{"role": "system", "content": system_prompt}]
+            print("Conversation history cleared.\n")
+            continue
+        if not user_input:
+            continue
 
-        messages: List[Dict[str, Any]] = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_input},
-        ]
+        messages.append({"role": "user", "content": user_input})
 
         while True:
             response = client.chat.completions.create(
@@ -107,7 +115,6 @@ def main() -> None:
                         }
                     )
                 continue
-
             break
 
 

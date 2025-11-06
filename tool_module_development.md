@@ -18,6 +18,11 @@ Build a lightweight yet extensible tool layer for LLM agents, covering registrat
 - **Optional Adapters**: cache, port forwarding, MCP server exposure.
 - **Invocation API**: unified `invoke(tool_name, payload, context=None)` entry point consumed by agents or MCP clients.
 
+## Implemented Modules
+- **Tool Registry (`tool_core.registry`)**: in-memory registry, JSON Schema validation (with fallback), error taxonomy, and singleton-aware callable lifecycle management.
+- **Python Execution Tool (`tools.python_tool`)**: sandbox-first code runner with safety checks, local fallback, and schema-driven contracts.
+- **Web Search Tool (`tools.search_tool`)**: Serper-backed organic search integration with configurable locale parameters, retries, and registry-friendly factory helpers.
+
 ## Core Components
 
 ### Tool Registry
@@ -85,3 +90,5 @@ Build a lightweight yet extensible tool layer for LLM agents, covering registrat
 - Authentication, authorization, rate limiting.
 - GUI or web-based tool catalogue.
 - Multi-language tool hosting and containerized execution.
+- TODO: Expand `examples` to cover OpenAI SDK `chat.completions` tool calls and the Responses API tool call flow, not just text-prompt driven usage.
+- TODO: Consolidate visit/search summarization by pairing a shared `SummaryManager` (central LLM client, retries, monitoring, keyword fallback) with structured outputs (evidence/summary JSON plus raw excerpts), blending the dr_inference and DeepResearch approaches.
