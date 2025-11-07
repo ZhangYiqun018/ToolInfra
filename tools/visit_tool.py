@@ -297,6 +297,7 @@ class VisitToolCallable:
 
         goal = (payload.get("goal") or "").strip()
         max_chars = self._sanitize_max_chars(payload.get("max_chars"))
+        include_raw_content = self._coerce_return_raw(payload.get("return_raw_content"))
         fetcher = self._get_fetcher()
 
         results: List[Dict[str, Any]] = []
@@ -304,12 +305,13 @@ class VisitToolCallable:
             try:
                 page = fetcher.fetch(target, max_chars=max_chars)
                 summary = self._summarize(page, goal)
+                content_value = page.content if include_raw_content else ""
                 results.append(
                     {
                         "input_url": target,
                         "final_url": page.final_url,
                         "title": page.title,
-                        "content": page.content,
+                        "content": content_value,
                         "summary": summary,
                         "source": page.source,
                         "word_count": page.word_count,
@@ -374,6 +376,19 @@ class VisitToolCallable:
         limit = min(limit, self.absolute_max_chars)
         return limit
 
+    def _coerce_return_raw(self, candidate: Any) -> bool:
+        if candidate is None:
+            return False
+        if isinstance(candidate, bool):
+            return candidate
+        if isinstance(candidate, str):
+            value = candidate.strip().lower()
+            if value in {"1", "true", "yes", "on"}:
+                return True
+            if value in {"0", "false", "no", "off"}:
+                return False
+        raise ToolExecutionError("return_raw_content must be a boolean value.")
+
     def _summarize(self, page: PageContent, goal: str) -> str:
         if not page.content or not goal:
             return ""
@@ -435,6 +450,10 @@ VISIT_INPUT_SCHEMA: Dict[str, Any] = {
             "type": "integer",
             "minimum": 1000,
             "description": "Maximum number of characters to keep from each page; values above the internal cap will be truncated.",
+        },
+        "return_raw_content": {
+            "type": ["boolean", "string"],
+            "description": "When true, include the raw page content in responses; otherwise summaries omit it.",
         },
     },
 }

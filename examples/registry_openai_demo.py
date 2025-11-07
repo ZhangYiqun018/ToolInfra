@@ -5,21 +5,26 @@ from __future__ import annotations
 import json
 import os
 import re
+import sys
+from pathlib import Path as _Path
 from typing import Any, Dict, List
 
 if __package__ in (None, ""):  # pragma: no cover - support direct execution
-    import sys
-    from pathlib import Path as _Path
-
     sys.path.append(str(_Path(__file__).resolve().parents[1]))
 
 from openai import OpenAI
 
 from tool_core import ToolRegistry
-from tools import create_python_tool_definition, create_search_tool_definition
+from tools import (
+    create_python_tool_definition,
+    create_search_tool_definition,
+    create_visit_tool_definition,
+)
 from tools.utils import extract_code
 
 try:
+    from formatting import ConversationFormatter
+    from prompts import TOOL_RESPONSE_TEMPLATE, build_system_prompt
     from utils import (
         DEFAULT_OUTPUT_DIR,
         build_registry,
@@ -29,6 +34,8 @@ try:
         current_timestamp,
     )
 except ImportError:  # pragma: no cover - support running via `python examples/...`
+    from .formatting import ConversationFormatter
+    from .prompts import TOOL_RESPONSE_TEMPLATE, build_system_prompt
     from .utils import (
         DEFAULT_OUTPUT_DIR,
         build_registry,
@@ -38,31 +45,12 @@ except ImportError:  # pragma: no cover - support running via `python examples/.
         current_timestamp,
     )
 
-SYSTEM_PROMPT_TEMPLATE = """You are a deep research assistant. Your core function is to conduct thorough, multi-source investigations and, when needed, call the available tools to reach a definitive answer.
-
-# Tools
-
-You are provided with function signatures within <tools></tools> XML tags:
-<tools>
-{tool_docs}
-</tools>
-
-For each function call, respond with a JSON object wrapped inside <tool_call></tool_call> tags:
-<tool_call>
-{{"name": <function-name>, "arguments": <args-json-object>}}
-</tool_call>
-
-Once a tool response is returned (inside <tool_response></tool_response>), incorporate the information and continue reasoning. Deliver the final answer once you have gathered sufficient evidence."""
-
-TOOL_RESPONSE_TEMPLATE = """<tool_response name="{name}">
-{payload}
-</tool_response>"""
-
 TOOL_CALL_PATTERN = re.compile(r"<tool_call>\s*(\{.*?\})\s*</tool_call>", re.DOTALL)
 
 AVAILABLE_TOOLS = {
     "python": create_python_tool_definition,
     "web_search": create_search_tool_definition,
+    "web_visit": create_visit_tool_definition,
 }
 
 
@@ -112,17 +100,18 @@ def main() -> None:
     )
     registry = build_registry(AVAILABLE_TOOLS, args.tools, registry=base_registry)
     tool_docs = "\n\n".join(format_tool_doc(tool) for tool in registry.list())
-    system_prompt = SYSTEM_PROMPT_TEMPLATE.format(tool_docs=tool_docs)
+    system_prompt = build_system_prompt(tool_docs)
     client = OpenAI(api_key=api_key, base_url=base_url) if base_url else OpenAI(api_key=api_key)
 
     messages: List[Dict[str, Any]] = [
         {"role": "system", "content": system_prompt},
     ]
+    formatter = ConversationFormatter()
     history_log: List[Dict[str, Any]] = [
         {"role": "system", "content": system_prompt, "timestamp": current_timestamp()},
     ]
     export_on_exit = bool(args.export_history)
-    print(f"SYSTEM: {system_prompt}\n\n")
+    formatter.show("system", system_prompt)
 
     while True:
         user_input = input("Enter a task (or 'exit'): ").strip()
@@ -134,31 +123,37 @@ def main() -> None:
             history_log = [
                 {"role": "system", "content": system_prompt, "timestamp": current_timestamp()}
             ]
-            print("Conversation history cleared.\n")
+            formatter.info("Conversation history cleared.")
+            formatter.show("system", system_prompt)
             continue
         if lowered in {"export", "output"}:
             file_path = export_history(history_log, model=model, output_dir=args.output_dir)
-            print(f"[History exported to {file_path}]")
+            formatter.info(f"History exported to {file_path}")
             messages = [{"role": "system", "content": system_prompt}]
             history_log = [
                 {"role": "system", "content": system_prompt, "timestamp": current_timestamp()}
             ]
-            print("Conversation history cleared.\n")
+            formatter.info("Conversation history cleared.")
+            formatter.show("system", system_prompt)
             continue
         if not user_input:
             continue
 
         messages.append({"role": "user", "content": user_input})
         history_log.append({"role": "user", "content": user_input, "timestamp": current_timestamp()})
+        formatter.show("user", user_input)
 
         while True:
             response = client.chat.completions.create(
                 model=model,
                 messages=messages,
+                stop=["\n<tool_response>", "<tool_response>"],
+                temperature=0.65,
+                logprobs=True,
             )
             message = response.choices[0].message
             content = message.content or ""
-            print(content)
+            formatter.show("assistant", content)
             messages.append({"role": "assistant", "content": content})
             history_log.append({"role": "assistant", "content": content, "timestamp": current_timestamp()})
 
@@ -172,7 +167,7 @@ def main() -> None:
                     arguments["code"] = extract_code(code)
                     result = registry.invoke(tool_name, arguments)
                     payload = json.dumps(result, indent=2, ensure_ascii=False)
-                    print(f"\n[Tool Result - {tool_name}]\n{payload}\n")
+                    formatter.show("tool", payload, title=f"TOOL RESULT • {tool_name}")
                     messages.append(
                         {
                             "role": "user",
@@ -188,7 +183,7 @@ def main() -> None:
 
     if export_on_exit:
         file_path = export_history(history_log, model=model, output_dir=args.output_dir)
-        print(f"[History exported to {file_path}]")
+        formatter.info(f"History exported to {file_path}")
 
 
 if __name__ == "__main__":

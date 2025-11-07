@@ -32,6 +32,10 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.template .env
+# 如需启用缓存
+cp config/cache.example.json config/cache.json
+# 如需启用摘要器
+cp config/summary.example.json config/summary.json
 ```
 
 根据需要填写 `.env`（如沙箱端点、API Key）。如在 Linux 遇到 sandbox 权限问题，可使用 CLI 提供的提权运行方式。
@@ -60,7 +64,7 @@ python -m pytest
 
 - **`web_search`**（`tools/search_tool.py`）：Serper API 搜索，支持区域参数、重试与缓存。
 - **`python`**（`tools/python_tool.py`）：沙箱优先执行，带安全检测与本地兜底。
-- **`web_visit`**（`tools/visit_tool.py`）：Jina Reader + BeautifulSoup 多 URL 抓取，支持 LLM 摘要与缓存。
+- **`web_visit`**（`tools/visit_tool.py`）：Jina Reader + BeautifulSoup 多 URL 抓取，支持 LLM 摘要与缓存。默认仅返回摘要结果（原始内容仍被缓存），需要原文时可在请求中添加 `return_raw_content=true`。
 
 每个工具都提供 JSON Schema 用于验证/文档，新增工具的流程见 `tool_module_development.md`。
 

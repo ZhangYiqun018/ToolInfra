@@ -77,6 +77,7 @@ class VisitToolTests(unittest.TestCase):
         self.assertEqual(entry["title"], "Example Domain")
         self.assertEqual(entry["status"], "success")
         self.assertTrue(entry["summary"])
+        self.assertEqual(entry["content"], "")
 
     def test_multiple_urls_and_error_handling(self):
         good_page = PageContent(
@@ -144,6 +145,7 @@ class VisitToolTests(unittest.TestCase):
         entry = result["results"][0]
         self.assertIn("RESP", entry["summary"])
         self.assertEqual(summarizer.calls, 1)
+        self.assertEqual(entry["content"], "")
 
     def test_summarizer_failure_falls_back_to_heuristic(self):
         content = "Alpha beta gamma.\n\nDelta epsilon."
@@ -162,6 +164,46 @@ class VisitToolTests(unittest.TestCase):
 
         entry = result["results"][0]
         self.assertTrue(entry["summary"])
+
+    def test_raw_content_opt_in(self):
+        content = "Alpha beta gamma."
+        page = PageContent(
+            input_url="https://example.com",
+            final_url="https://example.com",
+            title="Example Domain",
+            content=content,
+            source="stub",
+            word_count=3,
+        )
+        fetcher = _StubFetcher({"https://example.com": page})
+        registry = self._make_registry(fetcher)
+
+        result = registry.invoke(
+            "web_visit",
+            {"url": "https://example.com", "goal": "alpha", "return_raw_content": True},
+        )
+
+        entry = result["results"][0]
+        self.assertEqual(entry["content"], content)
+
+    def test_raw_content_flag_accepts_strings(self):
+        content = "Alpha beta gamma."
+        page = PageContent(
+            input_url="https://example.com",
+            final_url="https://example.com",
+            title="Example Domain",
+            content=content,
+            source="stub",
+            word_count=3,
+        )
+        fetcher = _StubFetcher({"https://example.com": page})
+        registry = self._make_registry(fetcher)
+
+        result = registry.invoke(
+            "web_visit",
+            {"url": "https://example.com", "goal": "alpha", "return_raw_content": "true"},
+        )
+        self.assertEqual(result["results"][0]["content"], content)
 
 
 @unittest.skipUnless(os.getenv("RUN_VISIT_INTEGRATION") == "1", "Set RUN_VISIT_INTEGRATION=1 to enable integration test")
@@ -184,7 +226,13 @@ class VisitToolIntegrationTests(unittest.TestCase):
         first = result["results"][0]
         self.assertEqual(first["status"], "success")
         self.assertIn("Example", first["title"])
-        self.assertTrue(first["content"])
+        self.assertEqual(first["content"], "")
+
+        detailed = self.registry.invoke(
+            "web_visit",
+            {"url": "https://example.com", "goal": "example domain overview", "return_raw_content": True},
+        )
+        self.assertTrue(detailed["results"][0]["content"])
 
 
 if __name__ == "__main__":

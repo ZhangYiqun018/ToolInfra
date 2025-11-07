@@ -32,6 +32,10 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.template .env
+# if you want to use cache
+cp config/cache.example.json config/cache.json
+# if you want to use summarizer
+cp config/summary.example.json config/summary.json
 ```
 
 Fill out `.env` as needed (e.g., sandbox endpoints, API keys). For Linux sandbox issues, run commands with the provided CLI escalation flag.
@@ -60,7 +64,7 @@ Some suites require credentials or feature flags:
 
 - **`web_search`** (`tools/search_tool.py`): Serper API integration with locale overrides, retries, and caching.
 - **`python`** (`tools/python_tool.py`): Sandbox-first exec with safe-mode checks and local fallback.
-- **`web_visit`** (`tools/visit_tool.py`): Multi-URL fetch via Jina Reader + BeautifulSoup fallback, optional LLM summarization, cache-aware responses.
+- **`web_visit`** (`tools/visit_tool.py`): Multi-URL fetch via Jina Reader + BeautifulSoup fallback, optional LLM summarization, cache-aware responses. Raw page text stays in the cache, and responses default to summaries only—set `return_raw_content=true` when callers need the original text.
 
 Each tool exposes JSON Schemas for validation/documentation; see `tool_module_development.md` for adding new tools.
 
