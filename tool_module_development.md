@@ -22,6 +22,8 @@ Build a lightweight yet extensible tool layer for LLM agents, covering registrat
 - **Tool Registry (`tool_core.registry`)**: in-memory registry, JSON Schema validation (with fallback), error taxonomy, and singleton-aware callable lifecycle management.
 - **Python Execution Tool (`tools.python_tool`)**: sandbox-first code runner with safety checks, local fallback, and schema-driven contracts.
 - **Web Search Tool (`tools.search_tool`)**: Serper-backed organic search integration with configurable locale parameters, retries, and registry-friendly factory helpers.
+- **Visit Tool (`tools.visit_tool`)**: fetch webpages through Jina Reader with BeautifulSoup fallback, multi-URL batching, lightweight goal-aware summarization, and registry-level caching toggles.
+- **Summarizer Component (`tool_core.summarizer`)**: shared interface that loads LLM-backed or no-op summarizers via JSON config / `SUMMARIZER_*` env vars for tools to reuse.
 - **Cache Utilities (`tool_core.cache`)**: adapter interface, in-memory stub, SQLite file-backed storage, PyMySQL backend, and registry-level cache orchestration.
 
 ## Core Components
@@ -64,6 +66,11 @@ Build a lightweight yet extensible tool layer for LLM agents, covering registrat
 - Transport: initial HTTP or Unix socket server leveraging lightweight frameworks (FastAPI, Starlette).
 - Context propagation: allow `invoke(..., context)` to receive MCP channel/session info; default is empty.
 - Metadata extensions (doc URLs, cache hints) can be appended in the MCP description for richer clients.
+
+### Summarizer Component
+- Configured via `config/summary.json` (sample provided) plus dedicated env vars (`SUMMARIZER_ENABLED`, `SUMMARIZER_BASE_URL`, `SUMMARIZER_MODEL`, `SUMMARIZER_API_KEY`, etc.) to avoid conflicts with other LLM settings.
+- Default implementation targets OpenAI-compatible `/chat/completions` endpoints with retry/backoff, prompt templating, max-input guards, and optional JSON responses.
+- Tools inject the summarizer during factory construction; if unavailable or it fails, they can fall back to heuristic extraction to keep responses stable.
 
 ## End-to-End Flow
 1. Tool author decorates or registers a class/function with `ToolDef`.

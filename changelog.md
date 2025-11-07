@@ -1,7 +1,13 @@
 # Changelog
 
 
-## 2025-11-12
+## 2025-11-07
+- added `tools/visit_tool.py` providing a Jina Reader + BeautifulSoup visit tool with multi-URL batching, goal-aware summaries, registry wiring, and cache support
+- taught the registry's fallback validator to accept union-type schema declarations (e.g., `["string", "array"]`) so visit inputs can accept strings or lists without jsonschema installed
+- introduced `tool_core.summarizer` with env/config-driven LLM summarizer support (plus `config/summary.example.json`, `.env.template` knobs), wired it into the visit tool with heuristic fallback, and exported helpers for future tools
+- expanded tests with `tests/test_visit_tool.py` coverage for summarizer injection/fallback, added `tests/test_summarizer.py`, documented the component, and added the `beautifulsoup4` dependency required for HTML parsing
+
+## 2025-11-06
 - ensured `examples/registry_openai_demo.py` always records assistant replies in the conversation history while retaining the additional tool result entries after sandbox calls
 - added `tool_core.cache` package with in-memory, SQLite, and PyMySQL adapters, cache-aware registry integration, and config loaders
 - introduced cache configuration workflow (`.env.template`, `config/cache.example.json`), backend override environment hooks, CLI wiring, and README guidance
