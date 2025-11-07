@@ -48,7 +48,7 @@ python -m pytest
 
 以下套件需要额外配置：
 
-- `SERPER_API_KEY`：真实 web_search 测试。
+- `SERPER_API_KEY`：真实 `web_search` / `scholar_search` 测试。
 - `RUN_VISIT_INTEGRATION=1`：访问真实网页。
 - `SUMMARIZER_ENABLED=true` + 配置 `config/summary.json` + `RUN_SUMMARIZER_INTEGRATION=1`：调用真实摘要服务。
 
@@ -63,6 +63,7 @@ python -m pytest
 ## 已实现的工具
 
 - **`web_search`**（`tools/search_tool.py`）：Serper API 搜索，支持区域参数、重试与缓存。
+- **`scholar_search`**（`tools/scholar_tool.py`）：基于 Serper 的 Google Scholar 查询，返回结构化信息（PDF 链接、引用次数等），可批量处理多个查询。
 - **`python`**（`tools/python_tool.py`）：沙箱优先执行，带安全检测与本地兜底。
 - **`web_visit`**（`tools/visit_tool.py`）：Jina Reader + BeautifulSoup 多 URL 抓取，支持 LLM 摘要与缓存。默认仅返回摘要结果（原始内容仍被缓存），需要原文时可在请求中添加 `return_raw_content=true`。
 

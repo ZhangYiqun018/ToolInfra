@@ -2,6 +2,8 @@
 
 
 ## 2025-11-07
+- added `tools/scholar_tool.py` to support Google Scholar queries via Serper with multi-query batching, caching, and structured paper metadata (link/pdf/citations)
+- exported the scholar tool factory, wired it into the OpenAI registry demo, documented it in both READMEs, and introduced unit tests under `tests/test_scholar_tool.py`
 - added `tools/visit_tool.py` providing a Jina Reader + BeautifulSoup visit tool with multi-URL batching, goal-aware summaries, registry wiring, and cache support
 - taught the registry's fallback validator to accept union-type schema declarations (e.g., `["string", "array"]`) so visit inputs can accept strings or lists without jsonschema installed
 - introduced `tool_core.summarizer` with env/config-driven LLM summarizer support (plus `config/summary.example.json`, `.env.template` knobs), wired it into the visit tool with heuristic fallback, and exported helpers for future tools

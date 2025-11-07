@@ -1,5 +1,5 @@
 {
-  "enabled": false,
+  "enabled": true,
   "provider": "openai_compatible",
   "base_url": "https://api.your-llm.com/v1",
   "model": "your-summary-model",
@@ -7,7 +7,7 @@
   "system_prompt": "You are an assistant that extracts precise evidence from webpages.",
   "user_prompt_template": "Goal:\\n{goal}\\nTitle:\\n{title}\\nWebpage Content:\\n{content}",
   "temperature": 0.2,
-  "max_tokens": 512,
+  "max_tokens": 4096,
   "timeout": 60,
   "max_retries": 2,
   "backoff": 0.8,

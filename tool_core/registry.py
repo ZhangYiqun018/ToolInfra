@@ -40,9 +40,43 @@ class ToolCallable(Protocol):
     def __call__(self, payload: Any, context: Optional[dict] = None) -> Any: ...  # pragma: no cover - protocol stub
 
 
+def _type_matches(expected: str, value: Any) -> bool:
+    if expected == "string":
+        return isinstance(value, str)
+    if expected == "number":
+        return isinstance(value, (int, float))
+    if expected == "integer":
+        return isinstance(value, int)
+    if expected == "array":
+        return isinstance(value, list)
+    if expected == "object":
+        return isinstance(value, dict)
+    if expected == "boolean":
+        return isinstance(value, bool)
+    return False
+
+
+def _assert_type(expected_type: Any, value: Any, *, location: str, field: Optional[str] = None) -> None:
+    """Raise a validation error when the value does not match the expected type(s)."""
+    if isinstance(expected_type, (list, tuple)):
+        allowed = tuple(str(item) for item in expected_type)
+    else:
+        allowed = (str(expected_type),)
+
+    for candidate in allowed:
+        if _type_matches(candidate, value):
+            return
+
+    label = " or ".join(allowed)
+    if field:
+        raise ToolValidationError(f"{location} field '{field}' must be a {label}")
+    raise ToolValidationError(f"{location} must be a {label}")
+
+
 def _basic_validate(schema: Dict[str, Any], payload: Any, *, location: str) -> None:
     """Fallback validation when jsonschema is unavailable."""
-    if schema.get("type") == "object":
+    schema_type = schema.get("type")
+    if schema_type == "object":
         if not isinstance(payload, dict):
             raise ToolValidationError(f"{location} must be an object")
 
@@ -56,24 +90,9 @@ def _basic_validate(schema: Dict[str, Any], payload: Any, *, location: str) -> N
             expected = properties.get(key)
             if not expected or "type" not in expected:
                 continue
-            expected_type = expected["type"]
-            if expected_type == "string" and not isinstance(value, str):
-                raise ToolValidationError(f"{location} field '{key}' must be a string")
-            if expected_type == "number" and not isinstance(value, (int, float)):
-                raise ToolValidationError(f"{location} field '{key}' must be a number")
-            if expected_type == "integer" and not isinstance(value, int):
-                raise ToolValidationError(f"{location} field '{key}' must be an integer")
-            if expected_type == "array" and not isinstance(value, list):
-                raise ToolValidationError(f"{location} field '{key}' must be an array")
-            if expected_type == "object" and not isinstance(value, dict):
-                raise ToolValidationError(f"{location} field '{key}' must be an object")
-    else:
-        if schema.get("type") == "array" and not isinstance(payload, list):
-            raise ToolValidationError(f"{location} must be an array")
-        if schema.get("type") == "string" and not isinstance(payload, str):
-            raise ToolValidationError(f"{location} must be a string")
-        if schema.get("type") == "number" and not isinstance(payload, (int, float)):
-            raise ToolValidationError(f"{location} must be a number")
+            _assert_type(expected["type"], value, location=location, field=key)
+    elif schema_type is not None:
+        _assert_type(schema_type, payload, location=location)
 
 
 def _validate(schema: Dict[str, Any], payload: Any, *, location: str) -> None:

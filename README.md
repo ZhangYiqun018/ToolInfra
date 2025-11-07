@@ -49,6 +49,7 @@ python -m pytest
 Some suites require credentials or feature flags:
 
 - `SERPER_API_KEY` for real web-search tests.
+- `SERPER_API_KEY` (same key) also powers `scholar_search` integration tests.
 - `RUN_VISIT_INTEGRATION=1` to hit live websites.
 - `SUMMARIZER_ENABLED=true` + `config/summary.json` + `RUN_SUMMARIZER_INTEGRATION=1` for live summarizer calls.
 
@@ -63,6 +64,7 @@ Some suites require credentials or feature flags:
 ## Available Tools
 
 - **`web_search`** (`tools/search_tool.py`): Serper API integration with locale overrides, retries, and caching.
+- **`scholar_search`** (`tools/scholar_tool.py`): Google Scholar queries via Serper with structured metadata (PDF link, citation counts) and multi-query batching.
 - **`python`** (`tools/python_tool.py`): Sandbox-first exec with safe-mode checks and local fallback.
 - **`web_visit`** (`tools/visit_tool.py`): Multi-URL fetch via Jina Reader + BeautifulSoup fallback, optional LLM summarization, cache-aware responses. Raw page text stays in the cache, and responses default to summaries only—set `return_raw_content=true` when callers need the original text.
 

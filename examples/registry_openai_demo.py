@@ -17,6 +17,7 @@ from openai import OpenAI
 from tool_core import ToolRegistry
 from tools import (
     create_python_tool_definition,
+    create_scholar_tool_definition,
     create_search_tool_definition,
     create_visit_tool_definition,
 )
@@ -50,6 +51,7 @@ TOOL_CALL_PATTERN = re.compile(r"<tool_call>\s*(\{.*?\})\s*</tool_call>", re.DOT
 AVAILABLE_TOOLS = {
     "python": create_python_tool_definition,
     "web_search": create_search_tool_definition,
+    "scholar_search": create_scholar_tool_definition,
     "web_visit": create_visit_tool_definition,
 }
 
