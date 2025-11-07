@@ -1,0 +1,12 @@
+{
+  "transport": "streamable-http",
+  "host": "127.0.0.1",
+  "port": 8000,
+  "mount_path": "/mcp",
+  "server_name": "ToolInfra MCP",
+  "instructions": "You can call the registered research tools via MCP.",
+  "auth_token": "",
+  "tools": [],
+  "enabled_tools": [],
+  "disabled_tools": []
+}

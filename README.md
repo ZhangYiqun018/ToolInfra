@@ -36,6 +36,8 @@ cp .env.template .env
 cp config/cache.example.json config/cache.json
 # if you want to use summarizer
 cp config/summary.example.json config/summary.json
+# if you want to customize the MCP server
+cp config/mcp.example.json config/mcp.json
 ```
 
 Fill out `.env` as needed (e.g., sandbox endpoints, API keys). For Linux sandbox issues, run commands with the provided CLI escalation flag.
@@ -53,6 +55,28 @@ Some suites require credentials or feature flags:
 - `RUN_VISIT_INTEGRATION=1` to hit live websites.
 - `SUMMARIZER_ENABLED=true` + `config/summary.json` + `RUN_SUMMARIZER_INTEGRATION=1` for live summarizer calls.
 
+### Running the MCP Server
+
+1. Install dependencies (`pip install -r requirements.txt`) and fill out `.env`.
+2. (Optional) Adjust `config/mcp.json` or point `MCP_CONFIG_PATH` to a custom file.
+3. Launch the server:
+
+```bash
+python -m mcp_server --transport streamable-http --host 0.0.0.0 --port 23445
+```
+
+For stdio-based hosts (e.g., Claude Desktop):
+
+```bash
+python -m mcp_server --transport stdio
+```
+
+Then add the command to your MCP client configuration. The `docs/mcp/` directory contains the official FastMCP tutorial and ToolInfra-specific notes.
+
+Need a quick client? See:
+- `examples/responses_api_demo.py`: connects OpenAI Responses API (auto-reads `config/mcp.json`, or override with `RESPONSES_MCP_URL` / `RESPONSES_MCP_TOKEN`).
+- `tests/mcp_client_demo.py`: lightweight FastMCP client for manual `list_tools` / `call_tool` checks.
+
 ## Configuration Highlights
 
 | Feature | Files / Env | Notes |
@@ -60,6 +84,7 @@ Some suites require credentials or feature flags:
 | Caching | `.env` (`CACHE_*`), `config/cache*.json` | Supports in-memory, SQLite, MySQL adapters. |
 | Summarizer | `.env` (`SUMMARIZER_ENABLED`, `SUMMARIZER_CONFIG_PATH`), `config/summary.json` | Enables LLM-backed summarization for visit (falls back to heuristic otherwise). |
 | Sandbox | `.env` (`SANDBOX_FUSION_ENDPOINTS`) | Controls the sandbox-first Python runner. |
+| MCP Server | `config/mcp.json`, `.env` (`MCP_CONFIG_PATH`), `docs/mcp/` | Configures the FastMCP server wrapper that exposes ToolInfra tools over MCP. |
 
 ## Available Tools
 

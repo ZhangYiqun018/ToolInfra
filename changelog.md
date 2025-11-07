@@ -2,6 +2,10 @@
 
 
 ## 2025-11-07
+- created `mcp_server/` with FastMCP wiring, env-driven config (`.env.template` additions), CLI entrypoint, and signature bridge so ToolInfra tools can be exposed over MCP
+- added `examples/tool_catalog.py` to centralize tool factory exports for both demos and the MCP server; README (EN/ZH) now documents MCP usage alongside the new `docs/mcp/` notes
+- introduced `config/mcp.example.json` + `MCP_CONFIG_PATH`, moving MCP settings out of environment variables to a dedicated JSON file and updating docs/templates accordingly
+- introduced `tests/test_mcp_signature.py` to verify JSON Schema → FastMCP signature conversion
 - added `tools/scholar_tool.py` to support Google Scholar queries via Serper with multi-query batching, caching, and structured paper metadata (link/pdf/citations)
 - exported the scholar tool factory, wired it into the OpenAI registry demo, documented it in both READMEs, and introduced unit tests under `tests/test_scholar_tool.py`
 - added `tools/visit_tool.py` providing a Jina Reader + BeautifulSoup visit tool with multi-URL batching, goal-aware summaries, registry wiring, and cache support

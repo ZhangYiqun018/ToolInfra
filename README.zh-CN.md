@@ -36,6 +36,8 @@ cp .env.template .env
 cp config/cache.example.json config/cache.json
 # 如需启用摘要器
 cp config/summary.example.json config/summary.json
+# 如需调整 MCP 服务
+cp config/mcp.example.json config/mcp.json
 ```
 
 根据需要填写 `.env`（如沙箱端点、API Key）。如在 Linux 遇到 sandbox 权限问题，可使用 CLI 提供的提权运行方式。
@@ -52,6 +54,28 @@ python -m pytest
 - `RUN_VISIT_INTEGRATION=1`：访问真实网页。
 - `SUMMARIZER_ENABLED=true` + 配置 `config/summary.json` + `RUN_SUMMARIZER_INTEGRATION=1`：调用真实摘要服务。
 
+### 启动 MCP 服务
+
+1. 安装依赖并配置 `.env`。
+2. 根据需要调整 `config/mcp.json` 或设置 `MCP_CONFIG_PATH`。
+3. 启动服务，例如：
+
+```bash
+python -m mcp_server --transport streamable-http --host 0.0.0.0 --port 8080
+```
+
+如需提供给 Claude Desktop 等基于 STDIO 的宿主，可改用：
+
+```bash
+python -m mcp_server --transport stdio
+```
+
+然后在客户端配置中添加该命令。更多背景与操作说明见 `docs/mcp/`。
+
+快速验证 MCP 客户端可以参考：
+- `examples/responses_api_demo.py`：通过 OpenAI Responses API 调用 MCP（默认读取 `config/mcp.json`，可用 `RESPONSES_MCP_URL` / `RESPONSES_MCP_TOKEN` 覆盖）。
+- `tests/mcp_client_demo.py`：使用官方 FastMCP 客户端发起 `list_tools` / `call_tool`。
+
 ## 关键配置
 
 | 功能 | 配置文件 / 环境变量 | 说明 |
@@ -59,6 +83,7 @@ python -m pytest
 | 缓存 | `.env` (`CACHE_*`)、`config/cache*.json` | 支持内存、SQLite、MySQL。 |
 | 摘要器 | `.env` (`SUMMARIZER_ENABLED`, `SUMMARIZER_CONFIG_PATH`)、`config/summary.json` | 控制 visit 工具的 LLM 摘要逻辑（失败回退到启发式）。 |
 | 沙箱 | `.env` (`SANDBOX_FUSION_ENDPOINTS`) | 控制 Python 工具的沙箱执行端点。 |
+| MCP 服务 | `config/mcp.json`、`.env` (`MCP_CONFIG_PATH`)、`docs/mcp/` | 配置基于 FastMCP 的服务，将工具暴露给 MCP 客户端。 |
 
 ## 已实现的工具
 

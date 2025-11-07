@@ -20,6 +20,13 @@ TOOL_RESPONSE_TEMPLATE = """<tool_response name="{name}">
 {payload}
 </tool_response>"""
 
+
+MCP_SYSTEM_PROMPT_TEMPLATE = """You are a deep research assistant. Your core function is to conduct thorough, multi-source investigations and, when needed, call the available tools to reach a definitive answer.
+
+Once a tool response is returned incorporate the information and continue reasoning. Deliver the final answer once you have gathered sufficient evidence.
+"""
+
+
 def build_system_prompt(tool_docs: str) -> str:
     """Return the system prompt populated with tool documentation."""
     return SYSTEM_PROMPT_TEMPLATE.format(tool_docs=tool_docs)

@@ -15,16 +15,11 @@ if __package__ in (None, ""):  # pragma: no cover - support direct execution
 from openai import OpenAI
 
 from tool_core import ToolRegistry
-from tools import (
-    create_python_tool_definition,
-    create_scholar_tool_definition,
-    create_search_tool_definition,
-    create_visit_tool_definition,
-)
 from tools.utils import extract_code
 
 try:
     from formatting import ConversationFormatter
+    from tool_catalog import AVAILABLE_TOOLS
     from prompts import TOOL_RESPONSE_TEMPLATE, build_system_prompt
     from utils import (
         DEFAULT_OUTPUT_DIR,
@@ -36,6 +31,7 @@ try:
     )
 except ImportError:  # pragma: no cover - support running via `python examples/...`
     from .formatting import ConversationFormatter
+    from .tool_catalog import AVAILABLE_TOOLS
     from .prompts import TOOL_RESPONSE_TEMPLATE, build_system_prompt
     from .utils import (
         DEFAULT_OUTPUT_DIR,
@@ -47,13 +43,6 @@ except ImportError:  # pragma: no cover - support running via `python examples/.
     )
 
 TOOL_CALL_PATTERN = re.compile(r"<tool_call>\s*(\{.*?\})\s*</tool_call>", re.DOTALL)
-
-AVAILABLE_TOOLS = {
-    "python": create_python_tool_definition,
-    "web_search": create_search_tool_definition,
-    "scholar_search": create_scholar_tool_definition,
-    "web_visit": create_visit_tool_definition,
-}
 
 
 def format_tool_doc(tool_def) -> str:
